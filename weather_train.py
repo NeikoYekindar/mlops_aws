@@ -45,7 +45,7 @@ class CFG:
     horizon: int = 10
     
     # Train settings
-    epochs: int = 10
+    epochs: int = 1
     batch_size: int = 128
     lr: float = 1e-3
 
