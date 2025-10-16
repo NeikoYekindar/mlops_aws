@@ -1,0 +1,231 @@
+import os
+import pandas as pd
+import warnings
+import argparse
+import boto3
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+from torch.nn.utils.utils import weight_norm
+
+# Import OTO library
+from only_train_once import OTO
+
+warnings.filterwarnings("ignore")
+
+# =========================
+#         CONFIG
+# =========================
+@dataclass
+class CFG:
+    # Paths will be passed via argparse
+    
+    # Columns mapping
+    timestamp_col: str = "date"
+    province_col: str = "province"
+    province_filter: Optional[str] = None
+    
+    # Feature & Targets
+    feature: List[str] = None
+    target: List[str] = None
+    
+    # Sequence settings
+    seq_len: int = 30
+    horizon: int = 10
+    
+    # Train settings
+    batch_size: int = 128
+    epochs: int = 50
+    lr: float = 1e-3
+
+# =========================
+#      DATA LOADER
+# =========================
+# ... (Giữ nguyên các class: WeatherDataset, TCNBlock, TCN từ file gốc của bạn) ...
+# Dưới đây là các class đó để đảm bảo file hoàn chỉnh
+
+class WeatherDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+    def __len__(self):
+        return len(self.X)
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
+
+class TCNBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, dilation, padding, dropout):
+        super().__init__()
+        self.conv1 = weight_norm(nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation))
+        self.chomp1 = lambda x: x[:, :, :-padding]
+        self.relu1 = nn.ReLU()
+        self.dropout1 = nn.Dropout(dropout)
+        self.conv2 = weight_norm(nn.Conv1d(out_channels, out_channels, kernel_size, stride, padding, dilation))
+        self.chomp2 = lambda x: x[:, :, :-padding]
+        self.relu2 = nn.ReLU()
+        self.dropout2 = nn.Dropout(dropout)
+        self.net = nn.Sequential(self.conv1, self.chomp1, self.relu1, self.dropout1, 
+                                 self.conv2, self.chomp2, self.relu2, self.dropout2)
+        self.downsample = nn.Conv1d(in_channels, out_channels, 1) if in_channels != out_channels else None
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        out = self.net(x)
+        res = x if self.downsample is None else self.downsample(x)
+        return self.relu(out + res)
+
+class TCN(nn.Module):
+    def __init__(self, num_inputs, num_outputs, channels, kernel_size, dropout):
+        super().__init__()
+        layers = []
+        num_levels = len(channels)
+        for i in range(num_levels):
+            dilation = 2 ** i
+            in_channels = num_inputs if i == 0 else channels[i-1]
+            out_channels = channels[i]
+            layers += [TCNBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation,
+                                     padding=(kernel_size-1) * dilation, dropout=dropout)]
+        self.network = nn.Sequential(*layers)
+        self.out = nn.Linear(channels[-1], num_outputs)
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        o = self.network(x)
+        o = self.out(o[:, :, -1])
+        return o
+
+# =========================
+#         MAIN
+# =========================
+def main(args):
+    # Setup
+    cfg = CFG()
+    cfg.feature = ['max', 'min', 'wind', 'humidi', 'cloud', 'pressure', 'rain']
+    cfg.target = ['max', 'min']
+    target_cols = [f"{c}_t+{cfg.horizon}" for c in cfg.target]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    # Load data from local path (CodeBuild will download from S3 to here)
+    df = pd.read_csv(args.data_path)
+    # ... (Phần xử lý dữ liệu giữ nguyên như file gốc của bạn) ...
+    df[cfg.timestamp_col] = pd.to_datetime(df[cfg.timestamp_col])
+    if cfg.province_filter is not None:
+        df = df[df[cfg.province_col] == cfg.province_filter].copy()
+    df = df.sort_values(by=cfg.timestamp_col).reset_index(drop=True)
+    df_feat = df[cfg.feature]
+    for c in cfg.target:
+        df_feat[f"{c}_t+{cfg.horizon}"] = df_feat[c].shift(-cfg.horizon)
+    df_feat = df_feat.dropna().reset_index(drop=True)
+    
+    # Split & Scale
+    X = df_feat[cfg.feature].values
+    y = df_feat[target_cols].values
+    X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+    scaler = StandardScaler()
+    X_tr_scaled = scaler.fit_transform(X_tr)
+    X_val_scaled = scaler.transform(X_val)
+    
+    # Create sequences
+    def create_sequences(X, y, seq_len):
+        Xs, ys = [], []
+        for i in range(len(X) - seq_len):
+            Xs.append(X[i:i+seq_len])
+            ys.append(y[i+seq_len-1])
+        return np.array(Xs), np.array(ys)
+    X_tr_seq, y_tr_seq = create_sequences(X_tr_scaled, y_tr, cfg.seq_len)
+    X_val_seq, y_val_seq = create_sequences(X_val_scaled, y_val, cfg.seq_len)
+
+    # Dataloader
+    train_ds = WeatherDataset(X_tr_seq, y_tr_seq)
+    val_ds = WeatherDataset(X_val_seq, y_val_seq)
+    train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=cfg.batch_size, shuffle=False)
+    
+    # Model, Loss, Optimizer
+    model = TCN(
+        num_inputs=len(cfg.feature),
+        num_outputs=len(target_cols),
+        channels=[32, 64, 128],
+        kernel_size=3,
+        dropout=0.2,
+    ).to(device)
+    loss_fn = nn.MSELoss()
+    opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
+    
+    # ===================================
+    #   <<< OTO INTEGRATION - START >>>
+    # ===================================
+    print("Initializing OTO...")
+    dummy_input = torch.randn(1, cfg.seq_len, len(cfg.feature)).to(device)
+    oto = OTO(model, dummy_input=dummy_input)
+    print("OTO Initialized.")
+    # ===================================
+    #   <<< OTO INTEGRATION - END >>>
+    # ===================================
+
+    # Training loop
+    best_val = float("inf")
+    best_state = None
+    print("Starting training loop...")
+    for ep in range(cfg.epochs):
+        model.train()
+        tr_loss_sum, tr_n = 0.0, 0
+        for xb, yb in train_loader:
+            xb, yb = xb.to(device), yb.to(device)
+            opt.zero_grad()
+            pred = model(xb)
+            loss = loss_fn(pred, yb)
+            loss.backward()
+            
+            # OTO step after backward() and before optimizer.step()
+            oto.step()
+            
+            opt.step()
+            tr_loss_sum += loss.item() * len(yb)
+            tr_n += len(yb)
+        tr_loss = tr_loss_sum / max(1, tr_n)
+
+        # Validate
+        model.eval()
+        with torch.no_grad():
+            val_loss_sum, val_n = 0.0, 0
+            for xb, yb in val_loader:
+                xb, yb = xb.to(device), yb.to(device)
+                pred = model(xb)
+                val_loss_sum += loss_fn(pred, yb).item() * len(yb)
+                val_n += len(yb)
+            val_loss = val_loss_sum / max(1, val_n)
+
+        print(f"Epoch {ep+1:02d}: train {tr_loss:.4f} | val {val_loss:.4f}")
+
+        if val_loss < best_val:
+            best_val = val_loss
+            # Get the compressed model state from OTO
+            best_state = model.state_dict()
+    
+    print("Training finished.")
+
+    # Save artifact
+    output_path = os.path.join(args.model_dir, "model.pth")
+    torch.save({
+        "state_dict": best_state,
+        "features": cfg.feature,
+        "targets": target_cols,
+        "seq_len": cfg.seq_len,
+        "horizon": cfg.horizon,
+    }, output_path)
+    print(f"Model artifact saved to {output_path}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data-path', type=str, required=True, help='Path to the training data CSV file.')
+    parser.add_argument('--model-dir', type=str, required=True, help='Directory to save the trained model artifact.')
+    
+    args = parser.parse_args()
+    main(args)
