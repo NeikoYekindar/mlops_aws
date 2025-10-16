@@ -126,7 +126,7 @@ class TCN(nn.Module):
 # =========================
 def main(args):
     DATA_PATH = args.data_path
-    MODEL_OUTPUT_PATH = args.model_dir
+    MODEL_OUTPUT_PATH = args.model_output_path
     # Setup
     cfg = CFG()
     cfg.feature = ['max', 'min', 'wind', 'humidi', 'cloud', 'pressure', 'rain']
