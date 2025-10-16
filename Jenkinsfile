@@ -31,11 +31,11 @@ pipeline {
 
                     sh """
                     docker run --rm \\
-                        -v \$(pwd)/data:/opt/ml/input/data \\
-                        -v \$(pwd)/models:/opt/ml/models \\
+                        -v \$(pwd)/data:/app/data \\
+                        -v \$(pwd)/model:/app/model \\
                         ${IMAGE_NAME}:${IMAGE_TAG} \\
-                        --data-path /opt/ml/input/data/weather.csv \\
-                        --model-dir /opt/ml/models
+                        --data-path /app/data/weather.csv \\
+                        --model-output-path /app/model/model.pth
                     """
                 }
             }
