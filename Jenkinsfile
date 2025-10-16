@@ -25,7 +25,7 @@ pipeline {
             steps{
                 script{
                     sh 'mkdir -p data'
-                    sh 'mkdir -p models'
+                    sh 'mkdir -p model'
                     sh "aws s3 cp s3://my-weather-pipeline-artifacts/data/weather.csv data/weather.csv"
 
 
