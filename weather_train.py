@@ -13,7 +13,7 @@ from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.utils import weight_norm
+from torch.nn.utils import weight_norm
 
 # Import OTO library
 from only_train_once import OTO
