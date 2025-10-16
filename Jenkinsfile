@@ -42,7 +42,7 @@ pipeline {
         }
         stage('Upload model to s3'){
             steps{
-                sh "awws s3 cp model/model.pth s3://my-weather-pipeline-artifacts/model/weather-tcn-jenkins.pth"
+                sh "aws s3 cp model/model.pth s3://my-weather-pipeline-artifacts/model/weather-tcn-jenkins.pth"
             }
         }
         
