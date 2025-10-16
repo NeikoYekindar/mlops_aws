@@ -126,7 +126,7 @@ class TCN(nn.Module):
 # =========================
 def main(args):
     DATA_PATH = args.data_path
-    MODEL_OUTPUT_PATH = args.model_output_path
+    MODEL_OUTPUT_PATH = args.model_dir
     # Setup
     cfg = CFG()
     cfg.feature = ['max', 'min', 'wind', 'humidi', 'cloud', 'pressure', 'rain']
@@ -239,7 +239,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a TCN model for weather forecasting.")
     parser.add_argument('--data-path', type=str, required=True, help='Path to the weather.csv data file.')
-    parser.add_argument('--model-output-path', type=str, required=True, help='Path to save the output model.pth file.')
+    parser.add_argument('--model-dir', type=str, required=True, help='Path to save the output model.pth file.')
     
     # Phân tích các đối số từ dòng lệnh
     args = parser.parse_args()
