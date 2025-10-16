@@ -3,3 +3,4 @@ scikit-learn
 torch
 only-train-once
 boto3
+packaging
