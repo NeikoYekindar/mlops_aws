@@ -17,32 +17,83 @@ pipeline {
         stage('Build Docker Image'){
             steps{
                 script {
+                    // Build image; assume docker is available on the agent
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
-        stage('Train model'){
+        stage('Prepare Data & Folders'){
             steps{
                 script{
-                    sh 'mkdir -p data'
-                    sh 'mkdir -p model'
-                    sh "aws s3 cp s3://my-weather-pipeline-artifacts/data/weather.csv data/weather.csv"
-
-
+                    sh 'mkdir -p data model'
+                    // Tải dataset từ S3, nếu thất bại dùng file trong repo (nếu có)
+                    sh '''
+                        set -e
+                        if aws s3 ls s3://${S3_BUCKET}/data/weather_dataset.csv >/dev/null 2>&1; then
+                          aws s3 cp s3://${S3_BUCKET}/data/weather_dataset.csv data/weather_dataset.csv
+                          aws s3 cp s3://${S3_BUCKET}/data/weather_test.csv data/weather_test.csv
+                        else
+                          echo "S3 dataset not found, trying local repo copy..."
+                          test -f weather_dataset.csv && cp weather_dataset.csv data/weather_dataset.csv || (echo "Dataset missing" && exit 1)
+                        fi
+                    '''
+                }
+            }
+        }
+        stage('Train model 1'){
+            steps{
+                script{
                     sh """
-                    docker run --rm \\
-                        -v \$(pwd)/data:/app/data \\
-                        -v \$(pwd)/model:/app/model \\
-                        ${IMAGE_NAME}:${IMAGE_TAG} \\
-                        --data-path /app/data/weather.csv \\
-                        --model-output-path /app/model/model.pth
+                    docker run --rm \
+                        -v \$(pwd)/data:/app/data \
+                        -v \$(pwd)/model:/app/model \
+                        ${IMAGE_NAME}:${IMAGE_TAG} \
+                        weather_train_1.py \
+                        --data-path /app/data/weather_dataset.csv \
+                        --model-output-path /app/model/model_1.pth
                     """
                 }
             }
         }
-        stage('Upload model to s3'){
+        stage('Train model 2'){
             steps{
-                sh "aws s3 cp model/model.pth s3://my-weather-pipeline-artifacts/model/weather-tcn-jenkins.pth"
+                script{
+                    sh """
+                    docker run --rm \
+                        -v \$(pwd)/data:/app/data \
+                        -v \$(pwd)/model:/app/model \
+                        ${IMAGE_NAME}:${IMAGE_TAG} \
+                        weather_train_2.py \
+                        --data-path /app/data/weather_dataset.csv \
+                        --model-output-path /app/model/model_2.pth
+                    """
+                }
+            }
+        }
+        stage('Evaluate & Select Best'){
+            steps{
+                script{
+                    sh """
+                    docker run --rm \
+                        -v \$(pwd)/data:/app/data \
+                        -v \$(pwd)/model:/app/model \
+                        ${IMAGE_NAME}:${IMAGE_TAG} \
+                        weather_test.py \
+                        --data-path /app/data/weather_test.csv \
+                        --model1-path /app/model/model_1.pth \
+                        --model2-path /app/model/model_2.pth \
+                        --out-dir /app/model
+                    """
+                }
+            }
+        }
+        stage('Archive & Upload artifacts'){
+            steps{
+                script {
+                    archiveArtifacts artifacts: 'model/**', fingerprint: true
+                    sh "aws s3 cp model/best_model.pth s3://${S3_BUCKET}/model/best_model_${IMAGE_TAG}.pth"
+                    sh "aws s3 cp model/results.json s3://${S3_BUCKET}/model/results_${IMAGE_TAG}.json"
+                }
             }
         }
         
@@ -52,7 +103,7 @@ pipeline {
             echo 'clearing ip workspace'
             cleanWs()
             script {
-                sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh "docker rmi -f ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
     }

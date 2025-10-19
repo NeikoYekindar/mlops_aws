@@ -32,7 +32,7 @@ warnings.filterwarnings("ignore")
 @dataclass
 class CFG:
     # Columns mapping
-    timestamp_col: str = "date"
+    timestamp_col: str = "timestamp"
     province_col: str = "province"
     province_filter: Optional[str] = None
     
@@ -129,8 +129,14 @@ def main(args):
     MODEL_OUTPUT_PATH = args.model_output_path
     # Setup
     cfg = CFG()
-    cfg.feature = ['max', 'min', 'wind', 'humidi', 'cloud', 'pressure', 'rain']
-    cfg.target = ['max', 'min']
+    cfg.feature = [
+        "temperature", "feels_like", "humidity", "wind_speed", "gust_speed", "pressure", "precipitation",
+        "rain_probability", "snow_probability", "uv_index", "dewpoint", "visibility", "cloud"
+    ]
+    cfg.target = [
+        "temperature", "feels_like", "humidity", "wind_speed", "gust_speed", "pressure", "precipitation",
+        "rain_probability", "snow_probability", "uv_index", "dewpoint", "visibility", "cloud"
+    ]
     target_cols = [f"{c}_t+{cfg.horizon}" for c in cfg.target]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -140,13 +146,13 @@ def main(args):
     df = pd.read_csv(DATA_PATH)
     
     # Process data
-    df[cfg.timestamp_col] = pd.to_datetime(df[cfg.timestamp_col])
+    # Use fixed 'timestamp' column without sorting (data already ordered at collection time)
+    ts_col = cfg.timestamp_col
     if cfg.province_filter is not None:
         df = df[df[cfg.province_col] == cfg.province_filter].copy()
-    df = df.sort_values(by=cfg.timestamp_col).reset_index(drop=True)
-    df_feat = df[cfg.feature]
+    df_feat = df[cfg.feature].copy()
     for c in cfg.target:
-        df_feat[f"{c}_t+{cfg.horizon}"] = df_feat[c].shift(-cfg.horizon)
+        df_feat[f"{c}_t+{cfg.horizon}"] = df[c].shift(-cfg.horizon)
     df_feat = df_feat.dropna().reset_index(drop=True)
     
     # Split & Scale
@@ -233,6 +239,10 @@ def main(args):
         "targets": target_cols,
         "seq_len": cfg.seq_len,
         "horizon": cfg.horizon,
+        "timestamp_col": ts_col if ts_col in df.columns else None,
+        # Save scaler stats for consistent inference
+        "scaler_mean": scaler.mean_.tolist(),
+        "scaler_scale": scaler.scale_.tolist(),
     }, MODEL_OUTPUT_PATH)
     print(f"Model artifact saved to {MODEL_OUTPUT_PATH}")
 
