@@ -28,7 +28,11 @@ pipeline {
             steps{
                 script{
                     sh 'mkdir -p model'
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', awsSessionTokenVariable: 'AWS_SESSION_TOKEN']]) {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+                        string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
+                    ]) {
                         sh """
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \
@@ -48,7 +52,11 @@ pipeline {
         stage('Train model 2'){
             steps{
                 script{
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', awsSessionTokenVariable: 'AWS_SESSION_TOKEN']]) {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+                        string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
+                    ]) {
                         sh """
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \
@@ -68,7 +76,11 @@ pipeline {
         stage('Evaluate & Select Best'){
             steps{
                 script{
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', awsSessionTokenVariable: 'AWS_SESSION_TOKEN']]) {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+                        string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
+                    ]) {
                         sh """
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \
@@ -91,7 +103,11 @@ pipeline {
             steps{
                 script {
                     archiveArtifacts artifacts: 'model/**', fingerprint: true
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', awsSessionTokenVariable: 'AWS_SESSION_TOKEN']]) {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+                        string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
+                    ]) {
                         sh "aws s3 cp --region ${AWS_DEFAULT_REGION} model/best_model.pth s3://${S3_BUCKET}/model/best_model_${IMAGE_TAG}.pth"
                         sh "aws s3 cp --region ${AWS_DEFAULT_REGION} model/results.json s3://${S3_BUCKET}/model/results_${IMAGE_TAG}.json"
                     }
