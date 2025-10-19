@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils import weight_norm
+from s3io import read_csv
 
 # Thư viện OTO đã được gỡ bỏ
 # from only_train_once import OTO
@@ -143,7 +144,7 @@ def main(args):
 
     # Load data from hardcoded path
     print(f"Loading data from {DATA_PATH}...")
-    df = pd.read_csv(DATA_PATH)
+    df = read_csv(DATA_PATH)
     
     # Process data
     # Use fixed 'timestamp' column without sorting (data already ordered at collection time)
