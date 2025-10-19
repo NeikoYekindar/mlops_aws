@@ -130,6 +130,13 @@ def evaluate_model(model_path, df):
     loss_fn = torch.nn.MSELoss()
     X = torch.tensor(X_seq, dtype=torch.float32).to(device)
     y = torch.tensor(y_seq, dtype=torch.float32).to(device)
+    if X.dim() == 2:
+        X = X.unsqueeze(0)
+        y = y.unsqueeze(0)
+    elif X.dim() == 1:
+        # If only one sequence and one feature, expand to (1, 1, features)
+        X = X.unsqueeze(0).unsqueeze(0)
+        y = y.unsqueeze(0).unsqueeze(0)
     start_time = time.time()
     with torch.no_grad():
         pred = model(X)
