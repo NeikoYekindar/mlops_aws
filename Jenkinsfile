@@ -8,6 +8,7 @@ pipeline {
         IMAGE_TAG = "build-${BUILD_NUMBER}"
         // Đặt region cho AWS SDK/CLI bên trong container (điều chỉnh phù hợp)
         AWS_DEFAULT_REGION = 'ap-southeast-1'
+        
     }
 
     stages {
@@ -37,7 +38,7 @@ pipeline {
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \
                             -e AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" \
-                            -e AWS_SESSION_TOKEN=\"$AWS_SESSION_TOKEN\" \
+                            
                             -e AWS_DEFAULT_REGION=\"${AWS_DEFAULT_REGION}\" \
                             -v \$(pwd)/model:/app/model \
                             ${IMAGE_NAME}:${IMAGE_TAG} \
@@ -61,7 +62,7 @@ pipeline {
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \
                             -e AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" \
-                            -e AWS_SESSION_TOKEN=\"$AWS_SESSION_TOKEN\" \
+                            
                             -e AWS_DEFAULT_REGION=\"${AWS_DEFAULT_REGION}\" \
                             -v \$(pwd)/model:/app/model \
                             ${IMAGE_NAME}:${IMAGE_TAG} \
@@ -85,7 +86,7 @@ pipeline {
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \
                             -e AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" \
-                            -e AWS_SESSION_TOKEN=\"$AWS_SESSION_TOKEN\" \
+                            
                             -e AWS_DEFAULT_REGION=\"${AWS_DEFAULT_REGION}\" \
                             -v \$(pwd)/model:/app/model \
                             ${IMAGE_NAME}:${IMAGE_TAG} \
