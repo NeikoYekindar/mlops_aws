@@ -8,6 +8,7 @@ import time
 import argparse
 import json
 import os
+from s3io import read_csv
 
 # =========================
 #      LOAD MODEL UTILS
@@ -141,7 +142,7 @@ def evaluate_model(model_path, df):
 # =========================
 def main(args):
     # Load test data
-    df = pd.read_csv(args.data_path)
+    df = read_csv(args.data_path)
     # df = df.sort_values(by="date").reset_index(drop=True)
     # Evaluate both models (each with its own metadata-driven preprocessing)
     mse1, latency1 = evaluate_model(args.model1_path, df)
