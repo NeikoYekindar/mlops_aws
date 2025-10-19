@@ -18,7 +18,6 @@ pipeline {
             steps{
                 script {
                     // Build image; assume docker is available on the agent
-                    sh "sudo apt install -y docker.io"
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
