@@ -1,4 +1,8 @@
 # TCN-model
+<img width="1686" height="181" alt="image" src="https://github.com/user-attachments/assets/84eac192-d66f-4ded-b361-b72c038bcaca" />
+<img width="509" height="463" alt="image" src="https://github.com/user-attachments/assets/9eb5ee32-9bcb-4a43-9742-6ed160792fa7" />
+
+
 # Hướng dẫn sử dụng Multiple Test Datasets
 
 ## 📁 Cấu trúc Files
@@ -188,6 +192,3 @@ python weather_test_3.py --data-path data3.csv --model1-path m1.pth --model2-pat
 python select_best_model.py --results-dir model
 ```
 
-<img width="1308" height="249" alt="image" src="https://github.com/user-attachments/assets/20ead248-fac9-4009-bc36-b9a1e0d08e0d" />
-
-<img width="1919" height="991" alt="image" src="https://github.com/user-attachments/assets/461f3991-dddb-4aa9-b990-a77abb3e37b4" />
