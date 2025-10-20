@@ -149,43 +149,56 @@ def evaluate_model(model_path, df):
 # =========================
 def main(args):
     # Load test data
+    print(f"[TEST 1] Loading test data from: {args.data_path}")
     df = read_csv(args.data_path)
-    # df = df.sort_values(by="date").reset_index(drop=True)
+    
     # Evaluate both models (each with its own metadata-driven preprocessing)
+    print(f"[TEST 1] Evaluating Model 1: {args.model1_path}")
     mse1, latency1 = evaluate_model(args.model1_path, df)
+    
+    print(f"[TEST 1] Evaluating Model 2: {args.model2_path}")
     mse2, latency2 = evaluate_model(args.model2_path, df)
+    
+    print(f"\n[TEST 1 RESULTS]")
     print(f"Model 1: {args.model1_path}\n  MSE: {mse1:.6f}\n  Latency: {latency1:.4f}s")
     print(f"Model 2: {args.model2_path}\n  MSE: {mse2:.6f}\n  Latency: {latency2:.4f}s")
-    # Select best (by MSE primarily; tie-breaker by lower latency)
+    
+    # Select best for this test
     if (mse1 < mse2) or (np.isclose(mse1, mse2) and latency1 <= latency2):
         best_path = args.model1_path
+        best_mse = mse1
+        best_latency = latency1
     else:
         best_path = args.model2_path
-    print(f"Best model: {best_path}")
-
-    # Write machine-readable results and copy best model
-    out_dir = args.out_dir or os.path.dirname(best_path) or "."
+        best_mse = mse2
+        best_latency = latency2
+    
+    print(f"[TEST 1] Best model for this test: {best_path}")
+        
+    # Write machine-readable results
+    out_dir = args.out_dir or "."
     os.makedirs(out_dir, exist_ok=True)
     results = {
+        "test_name": "test_1",
+        "data_path": args.data_path,
         "model1": {"path": args.model1_path, "mse": mse1, "latency_sec": latency1},
         "model2": {"path": args.model2_path, "mse": mse2, "latency_sec": latency2},
         "best_model_path": best_path,
+        "best_mse": best_mse,
+        "best_latency": best_latency,
         "criteria": "min_mse_then_latency"
     }
-    with open(os.path.join(out_dir, "results.json"), "w", encoding="utf-8") as f:
+    
+    results_file = os.path.join(out_dir, "results_test_1.json")
+    with open(results_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
-    # Copy best to a canonical filename for Jenkins
-    try:
-        import shutil
-        shutil.copy2(best_path, os.path.join(out_dir, "best_model.pth"))
-    except Exception as e:
-        print(f"Warning: could not copy best model to {out_dir}/best_model.pth: {e}")
+    print(f"[TEST 1] Results saved to: {results_file}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Test and compare two weather models.")
-    parser.add_argument('--data-path', type=str, required=True, help='Path to the weather_dataset.csv file.')
+    parser = argparse.ArgumentParser(description="Test 1: Compare two weather models on weather_test_1.csv")
+    parser.add_argument('--data-path', type=str, required=True, help='Path to weather_test_1.csv')
     parser.add_argument('--model1-path', type=str, required=True, help='Path to first model.pth file.')
     parser.add_argument('--model2-path', type=str, required=True, help='Path to second model.pth file.')
-    parser.add_argument('--out-dir', type=str, default='model', help='Directory to write results and best_model.pth')
+    parser.add_argument('--out-dir', type=str, default='model', help='Directory to write results')
     args = parser.parse_args()
     main(args)
