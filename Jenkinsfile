@@ -158,8 +158,8 @@ pipeline {
                             -v \$(pwd)/model:/app/model \
                             ${IMAGE_NAME}:${IMAGE_TAG} \
                             select_best_model.py \
-                            --results-dir /app/model/results_test_1.json /app/model/results_test_2.json /app/model/results_test_3.json \
-                            --out-dir /app/model/best_model.pth /app/model/results.json
+                            --results-dir /app/model \
+                            --out-dir /app/model
                         """
                     }
                 }
@@ -175,7 +175,7 @@ pipeline {
                         
                     ]) {
                         sh "aws s3 cp --region ${AWS_DEFAULT_REGION} model/best_model.pth s3://${S3_BUCKET}/model/best_model_${IMAGE_TAG}.pth"
-                        sh "aws s3 cp --region ${AWS_DEFAULT_REGION} model/results.json s3://${S3_BUCKET}/model/results_${IMAGE_TAG}.json"
+                        sh "aws s3 cp --region ${AWS_DEFAULT_REGION} model/final_model_selection.json s3://${S3_BUCKET}/model/final_model_selection_${IMAGE_TAG}.json"
                     }
                 }
             }
