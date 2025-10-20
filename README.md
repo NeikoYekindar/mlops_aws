@@ -9,7 +9,6 @@ mlops_aws/
 ├── weather_test_2.py          # Test với weather_test_2.csv
 ├── weather_test_3.py          # Test với weather_test_3.csv
 ├── select_best_model.py       # Tổng hợp kết quả và chọn model tốt nhất
-└── TEST_GUIDE.md             # File này
 ```
 
 ## 🎯 Quy trình Test
