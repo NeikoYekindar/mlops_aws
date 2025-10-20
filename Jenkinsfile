@@ -1,14 +1,10 @@
 pipeline {
     agent any
     environment {
-        // Thay thế bằng tên S3 bucket của bạn
         S3_BUCKET = 'my-weather-pipeline-artifacts'
         IMAGE_NAME = 'weather-tcn-trainer'
-        // Tự động tạo tag image dựa trên số lần build của Jenkins
         IMAGE_TAG = "build-${BUILD_NUMBER}"
-        // Đặt region cho AWS SDK/CLI bên trong container (điều chỉnh phù hợp)
         AWS_DEFAULT_REGION = 'ap-southeast-1'
-        
     }
 
     stages {
