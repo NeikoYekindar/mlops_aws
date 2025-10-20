@@ -93,7 +93,7 @@ def select_best(aggregated_results):
     else:
         winner = "model2"
     
-    return winner, aggregated_results[winner]["path"]
+    return winner, aggregated_results[winner]
 
 def main(args):
     print("=" * 60)
