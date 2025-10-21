@@ -2,10 +2,39 @@
 <img width="1686" height="181" alt="image" src="https://github.com/user-attachments/assets/84eac192-d66f-4ded-b361-b72c038bcaca" />
 <img width="1919" height="946" alt="image" src="https://github.com/user-attachments/assets/788d8d75-fe28-4a7e-8b5f-58b76b16028d" />
 
-<img width="509" height="463" alt="image" src="https://github.com/user-attachments/assets/9eb5ee32-9bcb-4a43-9742-6ed160792fa7" />
+```
+{
+  "test_results_summary": {
+    "model1": {
+      "path": "/app/model/model_1.pth",
+      "mse_test_1": 41.236839294433594,
+      "mse_test_2": 41.236839294433594,
+      "mse_test_3": 41.236839294433594,
+      "avg_mse": 41.236839294433594,
+      "avg_latency": 0.011711517969767252
+    },
+    "model2": {
+      "path": "/app/model/model_2.pth",
+      "mse_test_1": 35.117942810058594,
+      "mse_test_2": 35.117942810058594,
+      "mse_test_3": 35.117942810058594,
+      "avg_mse": 35.117942810058594,
+      "avg_latency": 0.00430909792582194
+    }
+  },
+  "best_model": {
+    "winner": "model2",
+    "path": "/app/model/model_2.pth",
+    "avg_mse": 35.117942810058594,
+    "avg_latency": 0.00430909792582194
+  },
+  "selection_criteria": "lowest_avg_mse_across_3_tests_then_latency"
+}
+```
 
 
 # Hướng dẫn sử dụng Multiple Test Datasets
+
 
 ## 📁 Cấu trúc Files
 
